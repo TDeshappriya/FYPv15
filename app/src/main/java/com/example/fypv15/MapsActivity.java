@@ -6,49 +6,68 @@ import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.graphics.Color;
 import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
+import android.location.Address;
+import android.location.Geocoder;
 import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
+import android.os.AsyncTask;
 import android.os.Handler;
 import android.os.Message;
 import android.provider.Settings;
 import android.support.v4.app.ActivityCompat;
 import android.os.Bundle;
 import android.support.v7.app.AppCompatActivity;
+import android.support.v7.app.AppCompatCallback;
 import android.util.Log;
+import android.view.View;
+import android.widget.EditText;
 import android.widget.Toast;
-
 import static android.content.ContentValues.TAG;
-
-import com.android.volley.AuthFailureError;
-import com.android.volley.Request;
 import com.android.volley.RequestQueue;
-import com.android.volley.Response;
-import com.android.volley.VolleyError;
-import com.android.volley.toolbox.StringRequest;
-import com.android.volley.toolbox.Volley;
 import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.SupportMapFragment;
+import com.google.android.gms.maps.model.Dot;
+import com.google.android.gms.maps.model.Gap;
 import com.google.android.gms.maps.model.LatLng;
+import android.support.design.widget.FloatingActionButton;
+import android.support.design.widget.Snackbar;
 import com.google.android.gms.maps.model.MarkerOptions;
 
 import com.example.fypv15.lowPassFilter;
+import com.google.android.gms.maps.model.PatternItem;
+import com.google.android.gms.maps.model.Polyline;
+import com.google.android.gms.maps.model.PolylineOptions;
 
+import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 
-public class MapsActivity extends AppCompatActivity implements OnMapReadyCallback, LocationListener, SensorEventListener {
+import okhttp3.OkHttpClient;
+import okhttp3.Request;
+import okhttp3.Response;
+
+
+public class MapsActivity extends AppCompatActivity implements AppCompatCallback, LocationListener, SensorEventListener ,OnMapReadyCallback,
+        GoogleMap.OnPolylineClickListener {
+
+
     private RequestQueue requestQueue;
     private GoogleMap mMap;
+
     protected LocationManager locationManager;
     private SensorManager sensorManager;
     Sensor accelerometer;
@@ -59,6 +78,7 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
     static double vibration;
     static String AddressName;
     static String oldAddressName = "empty";
+    static String newAddressName;
     static double distanceInMeters;
     static Location lastLocation = null;
     static Location currLocation;
@@ -66,6 +86,7 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
     public static ArrayList<String> accDataArrayList = new ArrayList<String>();
     public static ArrayList<String> locDataArrayList = new ArrayList<String>();
     static String id;
+    private static final int PATTERN_GAP_LENGTH_PX = 20;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -76,8 +97,21 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
                 .findFragmentById(R.id.map);
         mapFragment.getMapAsync(this);
 
+        FloatingActionButton fab = findViewById(R.id.imageButton);
+        fab.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                Intent intent = new Intent(MapsActivity.this, RequestVtype.class);
+                startActivity(intent);
+
+
+                Snackbar.make(view, "Here's a Snackbar", Snackbar.LENGTH_LONG)
+                        .setAction("Action", null).show();
+            }
+        });
+
         sensorManager = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
-//Submit();
+
         accelerometer = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
         sensorManager.registerListener(MapsActivity.this, accelerometer, SensorManager.SENSOR_DELAY_NORMAL);
 
@@ -95,18 +129,196 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
         locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 0, 0, this);
 
         id = Settings.Secure.getString(getContentResolver(), Settings.Secure.ANDROID_ID);
-    }
+//        Submit();
 
+        NetworkManager.getInstance(this);
+    }
 
     @Override
     public void onMapReady(GoogleMap googleMap) {
-        mMap = googleMap;
 
-        // Add a marker in Sydney and move the camera
-        LatLng sydney = new LatLng(latitude, longitude);
-        mMap.addMarker(new MarkerOptions().position(sydney).title("Marker in Sydney"));
-        mMap.moveCamera(CameraUpdateFactory.newLatLng(sydney));
+        // Add polylines and polygons to the map. This section shows just
+        // a single polyline. Read the rest of the tutorial to learn more.
+        mMap = googleMap;
+        DataFetcher fetcher = new DataFetcher();
+        fetcher.execute();
     }
+
+
+
+    private static final PatternItem DOT = new Dot();
+    private static final PatternItem GAP = new Gap(PATTERN_GAP_LENGTH_PX);
+    //
+// Create a stroke pattern of a gap followed by a dot.
+    private static final List<PatternItem> PATTERN_POLYLINE_DOTTED = Arrays.asList(GAP, DOT);
+
+    @Override
+    public void onPolylineClick(Polyline polyline) {
+        // Flip from solid stroke to dotted stroke pattern.
+        if ((polyline.getPattern() == null) || (!polyline.getPattern().contains(DOT))) {
+            polyline.setPattern(PATTERN_POLYLINE_DOTTED);
+        } else {
+            // The default pattern is a solid stroke.
+            polyline.setPattern(null);
+        }
+
+        Toast.makeText(this, "Route type " + polyline.getTag().toString(),
+                Toast.LENGTH_SHORT).show();
+    }
+
+//    public void drawPolyLines(String data, String res) {
+////        System.out.print(data);
+//        Log.d(TAG, "drawPolyLines: " + data);
+//        String[] dataList = data.split(", ");
+////        String[] array = new String[]{"79.87017185 6.83683996, 0.75 79.87017185 6.83749156","79.87017185 6.83683996, 0.75 79.87017185 6.8374915"};
+//        String[] array = new String[]{res};
+//        System.out.println(array);
+//        List<LatLng> latLngList = new ArrayList<LatLng>();
+//        PolylineOptions polyOptions = new PolylineOptions();
+//        polyOptions.clickable(true);
+//
+//        for(String row : dataList) {
+//            row.split(" ");
+//            polyOptions.add(new LatLng(Double.parseDouble(row.split(" ")[2]), Double.parseDouble(row.split(" ")[1])));
+//
+//        }
+////        polyOptions.color(5);
+////        Log.d(TAG, "drawPolyLines: " + polyOptions);
+//        Polyline polyline1 = mMap.addPolyline(polyOptions);
+//        polyline1.setTag("A");
+//        // Position the map's camera near Alice Springs in the center of Australia,
+//        // and set the zoom factor so most of Australia shows on the screen.
+//        mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(new LatLng(6.83683996, 79.86984405), 20));
+//
+////         Set listeners for click events.
+//        mMap.setOnPolylineClickListener(this);
+//
+//        PolylineOptions op = new PolylineOptions();
+//        op.clickable(true);
+//        op.add(new LatLng(6.83683996, 79.87017185));
+//        op.add(new LatLng(6.83749156, 79.86985665));
+//        polyline1 = mMap.addPolyline(op);
+//
+//    }
+
+    public void drawPolyLines(String data, String status) {
+
+        String[] dataList = data.split(", ");
+
+        PolylineOptions polyOptions = new PolylineOptions();
+        polyOptions.clickable(true);
+
+        for(String row : dataList) {
+            row.split(" ");
+            polyOptions.add(new LatLng(Double.parseDouble(row.split(" ")[0]), Double.parseDouble(row.split(" ")[1])));
+        }
+
+        switch(status)
+        {
+            case "Good":
+                polyOptions.color(Color.GREEN);
+                break;
+            case "Bad":
+                polyOptions.color(Color.RED);
+                break;
+        }
+
+
+//        polyOptions.color(android.R.color.holo_blue_dark);
+//        Log.d(TAG, "drawPolyLines: " + polyOptions);
+        Polyline polyline1 = mMap.addPolyline(polyOptions);
+        polyline1.setTag("A");
+        // Position the map's camera near Alice Springs in the center of Australia,
+        // and set the zoom factor so most of Australia shows on the screen.
+        mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(new LatLng(latitude, longitude), 20));
+
+//         Set listeners for click events.
+        mMap.setOnPolylineClickListener(this);
+
+
+    }
+
+    public class DataFetcher extends AsyncTask<Void, String, String> {
+        String responseStr = "";
+        String res = "";
+        JSONArray jArray = new JSONArray();
+        @Override
+        protected String doInBackground(Void... voids) {
+            OkHttpClient client = new OkHttpClient();
+        String url = "https://my-fyp-1551939769568.appspot.com/data/getDataToMap";
+//            String url = "http://192.168.43.2:8080/data/getDataToMap";
+
+
+            Request request = new Request.Builder()
+                    .url(url)
+                    .build();
+
+            try {
+                Response response = client.newCall(request).execute();
+                responseStr =  response.body().string();
+
+//                JSONObject jObj = null;
+//                try {
+//                    jObj = new JSONObject(responseStr);
+//                } catch (JSONException e) {
+//                    e.printStackTrace();
+//                }
+//                JSONArray myResponse = jObj.getJSONArray();
+
+                try {
+                    jArray = new JSONArray(responseStr);
+
+//                    Log.d(TAG, "doInBackground: " + jsonArray);
+
+
+                    System.out.println(res);
+                } catch (JSONException e) {
+                    e.printStackTrace();
+                }
+
+                return responseStr;
+            } catch (IOException e) {
+                return null;
+            }
+        }
+
+        @Override
+        protected void onPostExecute(String result) {
+
+            try {
+                for ( int i = 0; i < jArray.length(); i++) {
+                    JSONArray json = jArray.getJSONArray(i);
+                    drawPolyLines(json.getString(1), json.getString(0));
+                }
+            } catch(Exception e){
+            }
+        }
+
+        @Override
+        protected void onPreExecute() {
+        }
+    }
+
+    public void onMapSearch(View view) {
+        EditText locationSearch = (EditText) findViewById(R.id.editText);
+        String location = locationSearch.getText().toString();
+        List<Address>addressList = null;
+
+        if (location != null || !location.equals("")) {
+            Geocoder geocoder = new Geocoder(this);
+            try {
+                addressList = geocoder.getFromLocationName(location, 1);
+
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+            Address address = addressList.get(0);
+            LatLng latLng = new LatLng(address.getLatitude(), address.getLongitude());
+            mMap.addMarker(new MarkerOptions().position(latLng).title("Marker"));
+            mMap.animateCamera(CameraUpdateFactory.newLatLng(latLng));
+        }
+    }
+
     private class GeocoderHandler extends Handler {
         @Override
         public void handleMessage(Message message) {
@@ -122,6 +334,7 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
             }
 
             AddressName = locationAddress.toString();
+            Log.d(TAG, "handleMessage: " + AddressName);
         }
     }
 
@@ -138,6 +351,7 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
 
             addLatLngData =  latitude + " " + longitude ;
             locDataArrayList.add(addLatLngData);
+
         } else {
             showSettingsAlert();
         }
@@ -160,11 +374,11 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
 
     @Override
     public void onSensorChanged (SensorEvent sensorEvent)  {
-        Log.d(TAG, "onSensorChanged: X: " + sensorEvent.values[0] + " "+"Y: " + sensorEvent.values[1] + "Z: " + sensorEvent.values[2]);
+//        Log.d(TAG, "onSensorChanged: X: " + sensorEvent.values[0] + " "+"Y: " + sensorEvent.values[1] + "Z: " + sensorEvent.values[2]);
 //      Filtering data with low pass filter
         gravSensorVals = lowPassFilter.lowPass(sensorEvent.values.clone(), gravSensorVals);
 
-        Log.d(TAG, "ontesterChanged: X: " + gravSensorVals[0] + "Y: " + gravSensorVals[1] + "Z: " + gravSensorVals[2]);
+//        Log.d(TAG, "ontesterChanged: X: " + gravSensorVals[0] + "Y: " + gravSensorVals[1] + "Z: " + gravSensorVals[2]);
 //      Filtering data with High Pass filter and get the Z axis value
         zValueRounded = highPassFilter.highPass(gravSensorVals);
 
@@ -200,44 +414,5 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
                     }
                 });
         alertDialog.show();
-    }
-
-    private void Submit(){
-        final String savedata = "[{ \"userId\":\"031d8a3bac5e1276\",\"roadName\":\"Station Road\" ,\"accelerometer\":\"[0.16, 0.45, 0.67, 0.84, 0.82, 0.68, 0.52, 0.4, 0.3, 0.2, 0.1, -0.01, -0.11, -0.21, -0.28, -0.3, -0.27, -0.2, -0.09, 0.15, 0.43, 0.65, 0.82, 0.82, 0.72, 0.59, 0.47, 0.36, 0.26, 0.15, 0.02, -0.1, -0.21, -0.3, -0.36, -0.36, -0.31, -0.22, 0.03, 0.33, 0.56, 0.74, 0.73, 0.58, 0.4, 0.26, 0.15, 0.05, -0.05, -0.15, -0.27, -0.39, -0.45, -0.46, -0.41, -0.31, -0.11, 0.21, 0.46, 0.67, 0.73, 0.61, 0.43, 0.29, 0.2, 0.12, 0.04, -0.06, -0.16, -0.24, -0.3, -0.29, -0.26, -0.2, -0.11, 0.15, 0.41, 0.62, 0.76, 0.7, 0.54, 0.36, 0.23, 0.13, 0.03, -0.08, -0.2, -0.31, -0.38, -0.38, -0.34, -0.24, -0.03, 0.27, 0.5, 0.68, 0.73, 0.64, 0.49, 0.35, 0.22, 0.11, -0.01, -0.15, -0.28, -0.39, -0.44, -0.43, -0.37, -0.26, -0.1, 0.2, 0.45, 0.64, 0.76, 0.71, 0.58, 0.44, 0.31, 0.18, 0.06, -0.07, -0.19, -0.3, -0.4, -0.45, -0.44, -0.34, -0.05, 0.24, 0.47, 0.66, 0.65, 0.52, 0.36, 0.22, 0.12, 0.03, -0.07, -0.17, -0.27, -0.36, -0.42, -0.44, -0.41, -0.33, -0.13, 0.18, 0.42, 0.62, 0.67, 0.57, 0.39]\" ,\"latlng\":\"[6.83754332 79.87149777, 6.83754332 79.87149777, 6.83754478 79.87149819, 6.83754791 79.87151206, 6.83753231 79.8715086]\" ,\"iriValue\":\"6.129838733529648\" ,\"distanceInMeters\":\"1.7396868765354156\"}]";
-//        String URL = "https://my-fyp-1551939769568.appspot.com/data/add";
-        String URL = "http://192.168.1.11:8080/data/insertData";
-
-        requestQueue = Volley.newRequestQueue(getApplicationContext());
-        StringRequest stringRequest = new StringRequest(Request.Method.POST, URL, new Response.Listener<String>() {
-            @Override
-            public void onResponse(String response) {
-                try {
-                    JSONObject objres = new JSONObject(response);
-                    Toast.makeText(getApplicationContext(), objres.toString(), Toast.LENGTH_LONG).show();
-
-                } catch (JSONException e) {
-                    Toast.makeText(getApplicationContext(), "Server Error", Toast.LENGTH_LONG).show();
-                }
-            }
-        },new Response.ErrorListener(){
-            @Override
-            public void onErrorResponse(VolleyError error){
-                Toast.makeText(getApplicationContext(), error.getMessage(), Toast.LENGTH_LONG).show();
-            }
-        })
-        {
-            public String getBodyContentType() {return "application/json; charset=utf-8";}
-
-            public byte[] getBody() throws AuthFailureError {
-                try {
-                    return savedata == null ? null : savedata.getBytes("utf-8");
-                } catch (UnsupportedEncodingException uee){
-                    return null;
-                }
-            }
-
-        };
-
-        requestQueue.add(stringRequest);
     }
 }

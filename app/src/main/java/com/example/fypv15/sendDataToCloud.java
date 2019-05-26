@@ -21,7 +21,6 @@ import static com.example.fypv15.MapsActivity.vibrationTotal;
 public class sendDataToCloud extends CheckAddressName {
 
     private static String TAG;
-    private RequestQueue requestQueue;
 
     public void sendData() {
 
@@ -31,43 +30,15 @@ public class sendDataToCloud extends CheckAddressName {
                 "\"userId\"" + ":" + "\"" + id + "\"," +
                 "\"roadName\"" + ":" + "\"" + oldAddressName + "\" ," +
                 "\"accelerometer\"" + ":" + "\"" + accDataArrayList + "\" ," +
-                "\"latlng\"" + ":" + "\"" + locDataArrayList + "\" ," +
+                "\"latlng\"" + ":" + "\"" +  locDataArrayList.toString().replace("[","").replace("]","") + "\" ," +
                 "\"iriValue\"" + ":" + "\"" + iriValue + "\" ," +
                 "\"distanceInMeters\"" + ":" + "\"" + distanceInMeters + "\"" +
                 "}]";
 
         Log.d(TAG, "sendData: "+ data);
-        Submit(data);
+
+        NetworkManager.getInstance().somePostRequestReturningString(data);
+
     }
 
-    private void Submit(String data){
-        final String savedata = data;
-//        String URL = "https://my-fyp-1551939769568.appspot.com/data/add";
-        String URL = "http://192.168.1.11:8080/data/add";
-
-        requestQueue = Volley.newRequestQueue(getApplicationContext());
-        StringRequest stringRequest = new StringRequest(Request.Method.POST, URL, new Response.Listener<String>() {
-            @Override
-            public void onResponse(String response) {
-                Log.d("Response", response);
-            }
-        },new Response.ErrorListener(){
-            @Override
-            public void onErrorResponse(VolleyError error){
-            }
-        })
-        {
-            public String getBodyContentType() {return "application/json; charset=utf-8";}
-
-            public byte[] getBody() throws AuthFailureError {
-                try {
-                    return savedata == null ? null : savedata.getBytes("utf-8");
-                } catch (UnsupportedEncodingException uee){
-                    return null;
-                }
-            }
-
-        };
-        requestQueue.add(stringRequest);
-    }
 }
