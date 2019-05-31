@@ -2,6 +2,7 @@ package com.example.fypv15;
 
 import android.Manifest;
 import android.app.AlertDialog;
+import android.app.ProgressDialog;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
@@ -12,6 +13,7 @@ import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
 import android.location.Address;
+import android.location.Criteria;
 import android.location.Geocoder;
 import android.location.Location;
 import android.location.LocationListener;
@@ -22,23 +24,30 @@ import android.os.Message;
 import android.provider.Settings;
 import android.support.v4.app.ActivityCompat;
 import android.os.Bundle;
+import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.app.AppCompatCallback;
 import android.util.Log;
 import android.view.View;
 import android.widget.EditText;
+import android.widget.RelativeLayout;
 import android.widget.Toast;
+
 import static android.content.ContentValues.TAG;
+
 import com.android.volley.RequestQueue;
 import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
+import com.google.android.gms.maps.MapFragment;
 import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.SupportMapFragment;
 import com.google.android.gms.maps.model.Dot;
 import com.google.android.gms.maps.model.Gap;
 import com.google.android.gms.maps.model.LatLng;
+
 import android.support.design.widget.FloatingActionButton;
 import android.support.design.widget.Snackbar;
+
 import com.google.android.gms.maps.model.MarkerOptions;
 
 import com.example.fypv15.lowPassFilter;
@@ -56,24 +65,27 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
+import android.Manifest;
+
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.Response;
 
 
-public class MapsActivity extends AppCompatActivity implements AppCompatCallback, LocationListener, SensorEventListener ,OnMapReadyCallback,
+public class MapsActivity extends AppCompatActivity implements AppCompatCallback, LocationListener, SensorEventListener, OnMapReadyCallback,
         GoogleMap.OnPolylineClickListener {
 
 
     private RequestQueue requestQueue;
     private GoogleMap mMap;
-
+    View mapView;
+    public static final int MY_PERMISSIONS_REQUEST_LOCATION = 99;
     protected LocationManager locationManager;
     private SensorManager sensorManager;
     Sensor accelerometer;
-    static double longitude,latitude;
+    static double longitude, latitude;
     static String addLatLngData;
-    public float [] gravSensorVals;
+    public float[] gravSensorVals;
     public static double zValueRounded;
     static double vibration;
     static String AddressName;
@@ -87,6 +99,9 @@ public class MapsActivity extends AppCompatActivity implements AppCompatCallback
     public static ArrayList<String> locDataArrayList = new ArrayList<String>();
     static String id;
     private static final int PATTERN_GAP_LENGTH_PX = 20;
+    ProgressDialog p;
+    String provider;
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -96,19 +111,19 @@ public class MapsActivity extends AppCompatActivity implements AppCompatCallback
         SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager()
                 .findFragmentById(R.id.map);
         mapFragment.getMapAsync(this);
-
-        FloatingActionButton fab = findViewById(R.id.imageButton);
-        fab.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                Intent intent = new Intent(MapsActivity.this, RequestVtype.class);
-                startActivity(intent);
-
-
-                Snackbar.make(view, "Here's a Snackbar", Snackbar.LENGTH_LONG)
-                        .setAction("Action", null).show();
-            }
-        });
+        mapView = mapFragment.getView();
+//        FloatingActionButton fab = findViewById(R.id.imageButton);
+//        fab.setOnClickListener(new View.OnClickListener() {
+//            @Override
+//            public void onClick(View view) {
+//                Intent intent = new Intent(MapsActivity.this, RequestVtype.class);
+//                startActivity(intent);
+//
+//
+//                Snackbar.make(view, "Here's a Snackbar", Snackbar.LENGTH_LONG)
+//                        .setAction("Action", null).show();
+//            }
+//        });
 
         sensorManager = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
 
@@ -116,8 +131,16 @@ public class MapsActivity extends AppCompatActivity implements AppCompatCallback
         sensorManager.registerListener(MapsActivity.this, accelerometer, SensorManager.SENSOR_DELAY_NORMAL);
 
         locationManager = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
+
+        provider = locationManager.getBestProvider(new Criteria(), false);
+
+
         if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
             // TODO: Consider calling
+//            ActivityCompat.requestPermissions(this,
+//
+//                    new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, REQUEST_LOCATION);
+
             //    ActivityCompat#requestPermissions
             // here to request the missing permissions, and then overriding
             //   public void onRequestPermissionsResult(int requestCode, String[] permissions,
@@ -132,7 +155,21 @@ public class MapsActivity extends AppCompatActivity implements AppCompatCallback
 //        Submit();
 
         NetworkManager.getInstance(this);
+
+        FloatingActionButton fab = findViewById(R.id.imageButton);
+        fab.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                Intent intent = new Intent(MapsActivity.this, RequestVtype.class);
+                startActivity(intent);
+
+
+                Snackbar.make(view, "Here's a Snackbar", Snackbar.LENGTH_LONG)
+                        .setAction("Action", null).show();
+            }
+        });
     }
+
 
     @Override
     public void onMapReady(GoogleMap googleMap) {
@@ -140,6 +177,26 @@ public class MapsActivity extends AppCompatActivity implements AppCompatCallback
         // Add polylines and polygons to the map. This section shows just
         // a single polyline. Read the rest of the tutorial to learn more.
         mMap = googleMap;
+        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+            // TODO: Consider calling
+            //    ActivityCompat#requestPermissions
+            // here to request the missing permissions, and then overriding
+            //   public void onRequestPermissionsResult(int requestCode, String[] permissions,
+            //                                          int[] grantResults)
+            // to handle the case where the user grants the permission. See the documentation
+            // for ActivityCompat#requestPermissions for more details.
+            return;
+        }
+        mMap.setMyLocationEnabled(true);
+
+        View locationButton = ((View) mapView.findViewById(Integer.parseInt("1")).getParent()).findViewById(Integer.parseInt("2"));
+        RelativeLayout.LayoutParams rlp = (RelativeLayout.LayoutParams) locationButton.getLayoutParams();
+// position on right bottom
+        rlp.addRule(RelativeLayout.ALIGN_PARENT_TOP, 0);
+        rlp.addRule(RelativeLayout.ALIGN_PARENT_TOP, RelativeLayout.TRUE);
+        rlp.setMargins(0, 100, 0, 0);
+
+
         DataFetcher fetcher = new DataFetcher();
         fetcher.execute();
     }
@@ -230,7 +287,7 @@ public class MapsActivity extends AppCompatActivity implements AppCompatCallback
         polyline1.setTag("A");
         // Position the map's camera near Alice Springs in the center of Australia,
         // and set the zoom factor so most of Australia shows on the screen.
-        mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(new LatLng(latitude, longitude), 20));
+//        mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(new LatLng(latitude, longitude), 20));
 
 //         Set listeners for click events.
         mMap.setOnPolylineClickListener(this);
@@ -257,19 +314,8 @@ public class MapsActivity extends AppCompatActivity implements AppCompatCallback
                 Response response = client.newCall(request).execute();
                 responseStr =  response.body().string();
 
-//                JSONObject jObj = null;
-//                try {
-//                    jObj = new JSONObject(responseStr);
-//                } catch (JSONException e) {
-//                    e.printStackTrace();
-//                }
-//                JSONArray myResponse = jObj.getJSONArray();
-
                 try {
                     jArray = new JSONArray(responseStr);
-
-//                    Log.d(TAG, "doInBackground: " + jsonArray);
-
 
                     System.out.println(res);
                 } catch (JSONException e) {
@@ -290,12 +336,19 @@ public class MapsActivity extends AppCompatActivity implements AppCompatCallback
                     JSONArray json = jArray.getJSONArray(i);
                     drawPolyLines(json.getString(1), json.getString(0));
                 }
+                p.hide();
             } catch(Exception e){
             }
         }
 
         @Override
         protected void onPreExecute() {
+            super.onPreExecute();
+            p = new ProgressDialog(MapsActivity.this);
+            p.setMessage("Please wait...populating the map");
+            p.setIndeterminate(false);
+            p.setCancelable(false);
+            p.show();
         }
     }
 
@@ -315,7 +368,7 @@ public class MapsActivity extends AppCompatActivity implements AppCompatCallback
             Address address = addressList.get(0);
             LatLng latLng = new LatLng(address.getLatitude(), address.getLongitude());
             mMap.addMarker(new MarkerOptions().position(latLng).title("Marker"));
-            mMap.animateCamera(CameraUpdateFactory.newLatLng(latLng));
+//            mMap.animateCamera(CameraUpdateFactory.newLatLng(latLng));
         }
     }
 
@@ -351,9 +404,10 @@ public class MapsActivity extends AppCompatActivity implements AppCompatCallback
 
             addLatLngData =  latitude + " " + longitude ;
             locDataArrayList.add(addLatLngData);
-
+            mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(new LatLng(latitude, longitude), 100));
         } else {
             showSettingsAlert();
+
         }
     }
 

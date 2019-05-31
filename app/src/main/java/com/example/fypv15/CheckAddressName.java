@@ -24,34 +24,45 @@ public class CheckAddressName extends MapsActivity{
                 MapsActivity.lastLocation = MapsActivity.currLocation;
 
             } else if (!AddressName.equals(oldAddressName)) {
-                newAddressName = AddressName;
 
-                if(newAddressName.equals(oldAddressName)){
-                    vibrationTotal = vibrationTotal + vibration;
+                sendDataToCloud data = new sendDataToCloud();
+                data.sendData();
+                accDataArrayList.clear();
+                locDataArrayList.clear();
 
-                    String addAccelerometerData = Double.toString(zValueRounded);
+                MapsActivity.vibrationTotal = 0.00;
 
+                MapsActivity.lastLocation = null;
+                MapsActivity.distanceInMeters = 0.00;
 
-                    MapsActivity.accDataArrayList.add(addAccelerometerData);
-                    MapsActivity.locDataArrayList.add(addLatLngData);
-
-                    if (MapsActivity.lastLocation == null) {
-                        MapsActivity.lastLocation = MapsActivity.currLocation;
-                    }
-                    MapsActivity.distanceInMeters += MapsActivity.currLocation.distanceTo(MapsActivity.lastLocation);
-                    MapsActivity.lastLocation = MapsActivity.currLocation;
-
-                }else if (!newAddressName.equals(oldAddressName)){
-                    sendDataToCloud data = new sendDataToCloud();
-                    data.sendData();
-                    accDataArrayList.clear();
-                    locDataArrayList.clear();
-
-                    MapsActivity.vibrationTotal = 0.00;
-
-                    MapsActivity.lastLocation = null;
-                    MapsActivity.distanceInMeters = 0.00;
-                }
+//                newAddressName = AddressName;
+//
+//                if(AddressName.equals(newAddressName)){
+//                    vibrationTotal = vibrationTotal + vibration;
+//
+//                    String addAccelerometerData = Double.toString(zValueRounded);
+//
+//
+//                    MapsActivity.accDataArrayList.add(addAccelerometerData);
+//                    MapsActivity.locDataArrayList.add(addLatLngData);
+//
+//                    if (MapsActivity.lastLocation == null) {
+//                        MapsActivity.lastLocation = MapsActivity.currLocation;
+//                    }
+//                    MapsActivity.distanceInMeters += MapsActivity.currLocation.distanceTo(MapsActivity.lastLocation);
+//                    MapsActivity.lastLocation = MapsActivity.currLocation;
+//
+//                }else if (!AddressName.equals(newAddressName)){
+//                    sendDataToCloud data = new sendDataToCloud();
+//                    data.sendData();
+//                    accDataArrayList.clear();
+//                    locDataArrayList.clear();
+//
+//                    MapsActivity.vibrationTotal = 0.00;
+//
+//                    MapsActivity.lastLocation = null;
+//                    MapsActivity.distanceInMeters = 0.00;
+//                }
 
             }
             oldAddressName = AddressName;
