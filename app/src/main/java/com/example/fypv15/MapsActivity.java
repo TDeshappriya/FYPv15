@@ -1,7 +1,9 @@
 package com.example.fypv15;
 
 import android.Manifest;
+import android.app.ActionBar;
 import android.app.AlertDialog;
+import android.app.Dialog;
 import android.app.ProgressDialog;
 import android.content.Context;
 import android.content.DialogInterface;
@@ -107,6 +109,11 @@ public class MapsActivity extends AppCompatActivity implements AppCompatCallback
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_maps);
+
+        this.getSupportActionBar().setDisplayOptions(ActionBar.DISPLAY_SHOW_CUSTOM);
+        getSupportActionBar().setDisplayShowCustomEnabled(true);
+        getSupportActionBar().setCustomView(R.layout.custom_action_bar);
+
         // Obtain the SupportMapFragment and get notified when the map is ready to be used.
         SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager()
                 .findFragmentById(R.id.map);
@@ -163,11 +170,10 @@ public class MapsActivity extends AppCompatActivity implements AppCompatCallback
                 Intent intent = new Intent(MapsActivity.this, RequestVtype.class);
                 startActivity(intent);
 
-
-                Snackbar.make(view, "Here's a Snackbar", Snackbar.LENGTH_LONG)
-                        .setAction("Action", null).show();
             }
         });
+
+
     }
 
 
@@ -275,6 +281,9 @@ public class MapsActivity extends AppCompatActivity implements AppCompatCallback
             case "Good":
                 polyOptions.color(Color.GREEN);
                 break;
+            case "Average":
+                polyOptions.color(Color.CYAN);
+                break;
             case "Bad":
                 polyOptions.color(Color.RED);
                 break;
@@ -288,7 +297,9 @@ public class MapsActivity extends AppCompatActivity implements AppCompatCallback
         // Position the map's camera near Alice Springs in the center of Australia,
         // and set the zoom factor so most of Australia shows on the screen.
 //        mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(new LatLng(latitude, longitude), 20));
-
+        mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(new LatLng(latitude, longitude), 15f));
+//
+            mMap.animateCamera(CameraUpdateFactory.scrollBy(3 / 8, 0));
 //         Set listeners for click events.
         mMap.setOnPolylineClickListener(this);
 
@@ -337,6 +348,8 @@ public class MapsActivity extends AppCompatActivity implements AppCompatCallback
                     drawPolyLines(json.getString(1), json.getString(0));
                 }
                 p.hide();
+
+
             } catch(Exception e){
             }
         }
@@ -352,6 +365,19 @@ public class MapsActivity extends AppCompatActivity implements AppCompatCallback
         }
     }
 
+    public  void displaymsg(){
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setMessage("Search is empty")
+                .setCancelable(true)
+                .setPositiveButton("Ok", new DialogInterface.OnClickListener() {
+                    public void onClick(DialogInterface dialog, int id) {
+                        dialog.cancel();
+                    }
+                });
+        AlertDialog alert = builder.create();
+        alert.show();
+    }
+
     public void onMapSearch(View view) {
         EditText locationSearch = (EditText) findViewById(R.id.editText);
         String location = locationSearch.getText().toString();
@@ -365,10 +391,18 @@ public class MapsActivity extends AppCompatActivity implements AppCompatCallback
             } catch (IOException e) {
                 e.printStackTrace();
             }
+
+
+
             Address address = addressList.get(0);
+
             LatLng latLng = new LatLng(address.getLatitude(), address.getLongitude());
             mMap.addMarker(new MarkerOptions().position(latLng).title("Marker"));
 //            mMap.animateCamera(CameraUpdateFactory.newLatLng(latLng));
+            mMap.animateCamera(CameraUpdateFactory.newLatLng(latLng));
+//            mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(new LatLng(latitude, longitude), 15f));
+
+//            mMap.animateCamera(CameraUpdateFactory.scrollBy(3 / 8, 0));
         }
     }
 
@@ -404,7 +438,10 @@ public class MapsActivity extends AppCompatActivity implements AppCompatCallback
 
             addLatLngData =  latitude + " " + longitude ;
             locDataArrayList.add(addLatLngData);
-            mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(new LatLng(latitude, longitude), 100));
+//            mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(new LatLng(latitude, longitude), 100));
+//            mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(new LatLng(latitude, longitude), 15f));
+//
+//            mMap.animateCamera(CameraUpdateFactory.scrollBy(3 / 8, 0));
         } else {
             showSettingsAlert();
 

@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:padding="10dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="left"
+        android:orientation="horizontal">
+
+    <TextView
+        android:id="@+id/tvName"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Sarah"
+        android:gravity="center_horizontal"
+        android:layout_marginTop="5sp"
+        android:textAppearance="?android:attr/textAppearanceLarge" />
+
+    </LinearLayout>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="right"
+        android:orientation="horizontal">
+
+        <ImageButton
+            android:id="@+id/twoWheel"
+            android:layout_width="35dp"
+            android:layout_height="35dp"
+            android:layout_centerVertical="true"
+            android:layout_centerHorizontal="true"
+            android:layout_marginRight="10dp"
+            android:layout_gravity="center"
+            android:clickable="true"
+            android:scaleType="fitCenter"
+            android:background="@android:drawable/list_selector_background"
+            android:src="@drawable/scooter" />
+
+        <ImageButton
+            android:layout_width="45dp"
+            android:layout_height="45dp"
+            android:id="@+id/fourWheel"
+            android:layout_centerVertical="true"
+            android:layout_centerHorizontal="true"
+            android:layout_marginRight="10dp"
+            android:layout_gravity="center"
+            android:clickable="true"
+            android:scaleType="fitCenter"
+            android:background="@android:drawable/list_selector_background"
+            android:src="@drawable/car"/>
+
+        <ImageButton
+            android:layout_width="30dp"
+            android:layout_height="30dp"
+            android:id="@+id/delete"
+            android:layout_centerVertical="true"
+            android:layout_centerHorizontal="true"
+            android:layout_marginRight="10dp"
+            android:layout_gravity="center"
+            android:clickable="true"
+            android:scaleType="fitCenter"
+            android:background="@android:drawable/list_selector_background"
+            android:src="@drawable/delete"/>
+    </LinearLayout>
+
+
+</RelativeLayout>
